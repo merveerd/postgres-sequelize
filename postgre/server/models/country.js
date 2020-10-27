@@ -9,9 +9,9 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   country.associate = (models) => {
-    country.hasMany(models.boat, {
-      foreignKey: 'countryid',
-      as: 'boats',
+    country.belongsTo(models.country_boat, {
+      foreignKey: 'id',
+      targetKey: 'country_id',
     });
   };
 

@@ -70,6 +70,9 @@ app.use('/country', countryRoute);
 const boatRoute = require('./server/routes/boat.router');
 app.use('/boat', boatRoute);
 
+const country_boatRoute = require('./server/routes/country_boat.router');
+app.use('/', country_boatRoute);
+
 app.get('*', (req, res) =>
   res.status(200).send({
     message: 'Welcome to the beginning of nothingness.',

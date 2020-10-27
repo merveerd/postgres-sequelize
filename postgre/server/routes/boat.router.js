@@ -9,4 +9,6 @@ router.route('/').get((req, res) =>
 
 router.route('/').post(boatController.create);
 
+router.route('/').get(boatController.getOne);
+
 module.exports = router;

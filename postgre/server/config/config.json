@@ -1,0 +1,25 @@
+{
+  "development": {
+    "username": "sail_user",
+    "password": "sail",
+    "database": "saildb",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres"
+  },
+  "test": {
+    "username": "sail_user",
+    "password": "sail",
+    "database": "saildb",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dialect": "postgres"
+  },
+  "production": {
+    "username": "sail_user",
+    "password": "sail",
+    "database": "saildb",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  }
+}

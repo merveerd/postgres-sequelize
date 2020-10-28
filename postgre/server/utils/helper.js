@@ -8,7 +8,7 @@ client.on('error', function (err) {
 exports.cacheRemover = (key) => {
   client.del(key, function (err, response) {
     if (response == 1) {
-      console.log('Deleted Successfully!');
+      console.log(`${key} Deleted Successfully!`);
     } else {
       console.log('Cannot delete', response, err);
     }
@@ -16,7 +16,7 @@ exports.cacheRemover = (key) => {
 };
 
 exports.cacheSetter = (key, data) => {
-  client.set(key, JSON.stringify(data), 'EX', 30 * 60, (err) => {
+  client.set(`${key}`, JSON.stringify(data), 'EX', 30 * 60, (err) => {
     if (err) {
       console.log('set error', err);
     }

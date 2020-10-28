@@ -4,7 +4,7 @@ const country_boatController = require('../controllers').country_boat;
 
 router
   .route('/')
-  .get(country_boatController.listAllByCache)
+  .get(country_boatController.listAll)
   .post(country_boatController.create)
   .delete(country_boatController.delete);
 

@@ -9,7 +9,6 @@ client.on('error', function (err) {
 const getOne = (model) => async (req, res) => {
   client.get(`${model.name}-${req.params.id}`, function (err, object) {
     if (object) {
-      console.log('cache data getOne');
       return res.status(200).json({ data: JSON.parse(object) });
     } else {
       return model
@@ -34,7 +33,6 @@ const list = (model) => async (req, res) => {
   try {
     client.get(`${model.name}-all`, async function (err, object) {
       if (object) {
-        console.log('cache data list');
         return res.status(200).json({ data: JSON.parse(object) });
       } else {
         const doc = await model.findAll();

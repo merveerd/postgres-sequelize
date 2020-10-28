@@ -22,6 +22,7 @@ module.exports = {
   },
 
   listByCapacityTypeCountrywithCache(req, res) {
+    console.log('list by', req.params);
     return (
       cacheObj
         .findAll({

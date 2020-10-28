@@ -1,5 +1,4 @@
 const getOne = (model) => async (req, res) => {
-  console.log('req.params.id', req.params.id);
   try {
     const doc = await model.findByPk(req.params.id);
     if (!doc) {
@@ -13,9 +12,19 @@ const getOne = (model) => async (req, res) => {
   }
 };
 
+const list = (model) => async (req, res) => {
+  try {
+    const doc = await model.findAll();
+    res.status(200).json({ data: doc });
+  } catch (err) {
+    (err) => res.status(400).send(err);
+  }
+};
+
 module.exports = function crudController(model) {
   return {
     getOne: getOne(model),
+    list: list(model),
     // updateOne: updateOne(model)
   };
 };

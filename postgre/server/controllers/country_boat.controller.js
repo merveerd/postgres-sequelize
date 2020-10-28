@@ -8,23 +8,58 @@ var cacher = require('sequelize-redis-cache');
 var redis = require('redis');
 var rc = redis.createClient(6379, 'localhost');
 
-var cacheObj = cacher(db.sequelize, rc).model('country_boat').ttl(1800);
+var cacheObj = cacher(db.sequelize, rc).model('country_boat').ttl(2);
 
 module.exports = {
   create(req, res) {
     return country_boats
-      .create({
-        country_id: req.body.country_id,
-        boat_id: req.body.boat_id,
+      .findOrCreate({
+        where: {
+          country_id: req.body.country_id,
+          boat_id: req.body.boat_id,
+        },
+        defaults: {
+          country_id: req.body.country_id,
+          boat_id: req.body.boat_id,
+        },
       })
-      .then((result) => res.status(201).json({ data: result }))
+      .then((result) =>
+        res
+          .status(201)
+          .json({ data: result[0], message: `data created ${result[1]}` })
+      )
       .catch((error) => res.status(400).send(error));
   },
 
+  delete(req, res) {
+    return country_boats
+      .findOne({
+        where: {
+          country_id: req.body.country_id,
+          boat_id: req.body.boat_id,
+        },
+      })
+      .then((result) => {
+        console.log('result', result);
+        result
+          .destroy()
+          .then((doc) => {
+            status(200).json({ data: doc });
+          })
+          .catch((err) => {
+            res.status(404).json({ message: err });
+          });
+      })
+      .catch((err) => {
+        res.status(404).json({ message: err });
+      });
+  },
+
   listByCapacityTypeCountrywithCache(req, res) {
-    console.log('list by', req.params);
+    var cacheObj1 = cacher(db.sequelize, rc).model('country_boat').ttl(2);
+
     return (
-      cacheObj
+      cacheObj1
         .findAll({
           raw: true,
           attributes: [['boat_id', 'boat id']],
@@ -55,7 +90,7 @@ module.exports = {
         })
         .then(function (result) {
           res.status(200).json({ data: result });
-          console.log(cacheObj.cacheHit); // true or false
+          console.log(cacheObj1.cacheHit); // true or false
         })
         // .then((result) => res.status(200).send(result))
         .catch((error) => res.status(400).send(error))
@@ -63,8 +98,9 @@ module.exports = {
   },
 
   listAllByCache(req, res) {
-    console.log('req.params', req.params);
-    return cacheObj
+    var cacheObj2 = cacher(db.sequelize, rc).model('country_boat').ttl(2);
+
+    return cacheObj2
       .findAll({
         raw: true,
         attributes: [['boat_id', 'boat id']],
@@ -87,7 +123,7 @@ module.exports = {
       })
       .then(function (result) {
         res.status(200).json({ data: result });
-        console.log(cacheObj.cacheHit); // true or false
+        console.log(cacheObj2.cacheHit); // true or false
       })
       .catch((error) => res.status(400).send(error));
   },

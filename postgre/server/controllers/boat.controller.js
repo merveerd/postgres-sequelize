@@ -5,13 +5,22 @@ module.exports = {
   ...crudControllers(boats),
   create(req, res) {
     return boats
-      .create({
-        name: req.body.name.toLowerCase(),
-        capacity: req.body.capacity,
-        type: req.body.type.toLowerCase(),
-        countryid: req.body.countryid,
+      .findOrCreate({
+        where: {
+          name: req.body.name.toLowerCase(),
+        },
+        defaults: {
+          name: req.body.name.toLowerCase(),
+          capacity: req.body.capacity,
+          type: req.body.type.toLowerCase(),
+          countryid: req.body.countryid,
+        },
       })
-      .then((boat) => res.status(201).json({ data: boat }))
+      .then((result) =>
+        res
+          .status(201)
+          .json({ data: result[0], message: `data created ${result[1]}` })
+      )
       .catch((error) => res.status(400).send(error));
   },
 };

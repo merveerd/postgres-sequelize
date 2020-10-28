@@ -3,10 +3,12 @@ const boats = require('../models').boat;
 const country_boats = require('../models').country_boat;
 
 const Op = require('../models').Sequelize.Op;
-const db = require('../models');
-var cacher = require('sequelize-redis-cache');
 var redis = require('redis');
-var rc = redis.createClient(6379, 'localhost');
+var client = redis.createClient(6379, 'localhost');
+
+client.on('error', function (err) {
+  console.log('Something went wrong ', err);
+});
 
 module.exports = {
   create(req, res) {
@@ -21,11 +23,18 @@ module.exports = {
           boat_id: req.body.boat_id,
         },
       })
-      .then((result) =>
-        res
+      .then((result) => {
+        client.del('all-boats', function (err, response) {
+          if (response == 1) {
+            console.log('Deleted Successfully!');
+          } else {
+            console.log('Cannot delete', response, err);
+          }
+        });
+        return res
           .status(201)
-          .json({ data: result[0], message: `data created ${result[1]}` })
-      )
+          .json({ data: result[0], message: `data created ${result[1]}` });
+      })
       .catch((error) => res.status(400).send(error));
   },
 
@@ -39,14 +48,16 @@ module.exports = {
       })
       .then((result) => {
         console.log('result', result);
-        result
-          .destroy()
-          .then((doc) => {
-            status(200).json({ data: doc });
-          })
-          .catch((err) => {
-            res.status(404).json({ message: err });
-          });
+        result.destroy();
+
+        client.del('all-boats', function (err, response) {
+          if (response == 1) {
+            console.log('Deleted Successfully!');
+          } else {
+            console.log('Cannot delete', response, err);
+          }
+        });
+        return status(200).json({ message: 'deleted' });
       })
       .catch((err) => {
         res.status(404).json({ message: err });
@@ -54,113 +65,155 @@ module.exports = {
   },
 
   listByCapacityTypeCountrywithCache(req, res) {
-    var cacheObj1 = cacher(db.sequelize, rc).model('country_boat').ttl(2);
-
-    return (
-      cacheObj1
-        .findAll({
-          raw: true,
-          attributes: [['boat_id', 'boat id']],
-          include: [
-            {
-              model: countries,
-              where: {
-                name: req.params.country.toLowerCase(),
-              },
-              as: 'countries',
-              attributes: [['name', 'name']],
-            },
-            {
-              model: boats,
-              where: {
-                capacity: {
-                  [Op.between]: [req.body.minCap, req.body.maxCap],
+    client.get(
+      `all-boats-${req.params.country}-${req.params.type}-${req.body.minCap}-${req.body.minCap}`,
+      function (err, object) {
+        if (object) {
+          //  console.log('cache data');
+          return res.status(200).json({ data: JSON.parse(object) });
+        } else {
+          return country_boats
+            .findAll({
+              raw: true,
+              attributes: [['boat_id', 'boat id']],
+              include: [
+                {
+                  model: countries,
+                  where: {
+                    name: req.params.country.toLowerCase(),
+                  },
+                  as: 'countries',
+                  attributes: [['name', 'name']],
                 },
-                type: req.params.type,
-              },
-              as: 'boats',
-              attributes: [
-                ['name', 'name'],
-                ['capacity', 'capacity'],
-                ['type', 'type'],
+                {
+                  model: boats,
+                  where: {
+                    capacity: {
+                      [Op.between]: [req.body.minCap, req.body.maxCap],
+                    },
+                    type: req.params.type,
+                  },
+                  as: 'boats',
+                  attributes: [
+                    ['name', 'name'],
+                    ['capacity', 'capacity'],
+                    ['type', 'type'],
+                  ],
+                },
               ],
-            },
-          ],
-        })
-        .then(function (result) {
-          res.status(200).json({ data: result });
-          console.log(cacheObj1.cacheHit); // true or false
-        })
-        // .then((result) => res.status(200).send(result))
-        .catch((error) => res.status(400).send(error))
+            })
+            .then(function (result) {
+              client.set(
+                `all-boats-${req.params.country}-${req.params.type}-${req.body.minCap}-${req.body.maxCap}`,
+                JSON.stringify(result),
+                'EX',
+                30 * 60,
+                (err) => {
+                  if (err) {
+                    console.log('set error', err);
+                  }
+                }
+              );
+              res.status(200).json({ data: result });
+            })
+            .catch((error) => res.status(400).send(error));
+        }
+      }
     );
   },
 
   listAllByCache(req, res) {
-    var cacheObj2 = cacher(db.sequelize, rc).model('country_boat').ttl(2);
-
-    return cacheObj2
-      .findAll({
-        raw: true,
-        attributes: [['boat_id', 'boat id']],
-        include: [
-          {
-            model: countries,
-            as: 'countries',
-            attributes: [['name', 'name']],
-          },
-          {
-            model: boats,
-            as: 'boats',
-            attributes: [
-              ['name', 'name'],
-              ['capacity', 'capacity'],
-              ['type', 'type'],
+    client.get(`all-boats`, function (err, object) {
+      if (object) {
+        return res.status(200).json({ data: JSON.parse(object) });
+      } else {
+        return country_boats
+          .findAll({
+            raw: true,
+            attributes: [['boat_id', 'boat id']],
+            include: [
+              {
+                model: countries,
+                as: 'countries',
+                attributes: [['name', 'name']],
+              },
+              {
+                model: boats,
+                as: 'boats',
+                attributes: [
+                  ['name', 'name'],
+                  ['capacity', 'capacity'],
+                  ['type', 'type'],
+                ],
+              },
             ],
-          },
-        ],
-      })
-      .then(function (result) {
-        res.status(200).json({ data: result });
-        console.log(cacheObj2.cacheHit); // true or false
-      })
-      .catch((error) => res.status(400).send(error));
+          })
+          .then(function (result) {
+            client.set(
+              `all-boats`,
+              JSON.stringify(result),
+              'EX',
+              30 * 60,
+              (err) => {
+                if (err) {
+                  console.log('set error', err);
+                }
+              }
+            );
+            res.status(200).json({ data: result });
+          })
+          .catch((error) => res.status(400).send(error));
+      }
+    });
   },
 
   listByCountry(req, res) {
-    var cacheObj3 = cacher(db.sequelize, rc).model('country_boat').ttl(2);
-
-    return (
-      cacheObj3
-        .findAll({
-          raw: true,
-          attributes: [['boat_id', 'boat id']],
-          include: [
-            {
-              model: countries,
-              where: {
-                name: req.params.country.toLowerCase(),
+    client.get(`${req.params.country}-all-boats`, function (err, object) {
+      if (object) {
+        //  console.log('cache data');
+        return res.status(200).json({ data: JSON.parse(object) });
+      } else {
+        return country_boats
+          .findAll({
+            raw: true,
+            attributes: [['boat_id', 'boat id']],
+            include: [
+              {
+                model: countries,
+                where: {
+                  name: req.params.country.toLowerCase(),
+                },
+                as: 'countries',
+                attributes: [['name', 'name']],
               },
-              as: 'countries',
-              attributes: [['name', 'name']],
-            },
-            {
-              model: boats,
-              as: 'boats',
-              attributes: [
-                ['name', 'name'],
-                ['capacity', 'capacity'],
-                ['type', 'type'],
-              ],
-            },
-          ],
-        })
-        .then(function (result) {
-          res.status(200).json({ data: result });
-          console.log(cacheObj3.cacheHit); // true or false
-        })
-        // .then((result) => res.status(200).send(result))
-        .catch((error) => res.status(400).send(error))
-    );
+              {
+                model: boats,
+                as: 'boats',
+                attributes: [
+                  ['name', 'name'],
+                  ['capacity', 'capacity'],
+                  ['type', 'type'],
+                ],
+              },
+            ],
+          })
+          .then(function (result) {
+            client.set(
+              `${req.params.country}-all-boats`,
+              JSON.stringify(result),
+              'EX',
+              30 * 60,
+              (err) => {
+                if (err) {
+                  console.log('set error', err);
+                }
+              }
+            );
+
+            return res.status(200).json({ data: result });
+          })
+          .catch((error) => res.status(400).send(error));
+      }
+    });
   },
 };

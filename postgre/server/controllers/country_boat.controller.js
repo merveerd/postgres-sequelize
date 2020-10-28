@@ -10,6 +10,8 @@ client.on('error', function (err) {
   console.log('Something went wrong ', err);
 });
 
+const { cacheRemover, cacheSetter } = require('../utils/helper');
+
 module.exports = {
   create(req, res) {
     return country_boats
@@ -24,13 +26,7 @@ module.exports = {
         },
       })
       .then((result) => {
-        client.del('all-boats', function (err, response) {
-          if (response == 1) {
-            console.log('Deleted Successfully!');
-          } else {
-            console.log('Cannot delete', response, err);
-          }
-        });
+        cacheRemover('all-boats');
         return res
           .status(201)
           .json({ data: result[0], message: `data created ${result[1]}` });
@@ -50,13 +46,7 @@ module.exports = {
         console.log('result', result);
         result.destroy();
 
-        client.del('all-boats', function (err, response) {
-          if (response == 1) {
-            console.log('Deleted Successfully!');
-          } else {
-            console.log('Cannot delete', response, err);
-          }
-        });
+        cacheRemover('all-boats');
         return status(200).json({ message: 'deleted' });
       })
       .catch((err) => {
@@ -103,17 +93,11 @@ module.exports = {
               ],
             })
             .then(function (result) {
-              client.set(
+              cacheSetter(
                 `all-boats-${req.params.country}-${req.params.type}-${req.body.minCap}-${req.body.maxCap}`,
-                JSON.stringify(result),
-                'EX',
-                30 * 60,
-                (err) => {
-                  if (err) {
-                    console.log('set error', err);
-                  }
-                }
+                result
               );
+
               res.status(200).json({ data: result });
             })
             .catch((error) => res.status(400).send(error));
@@ -149,17 +133,8 @@ module.exports = {
             ],
           })
           .then(function (result) {
-            client.set(
-              `all-boats`,
-              JSON.stringify(result),
-              'EX',
-              30 * 60,
-              (err) => {
-                if (err) {
-                  console.log('set error', err);
-                }
-              }
-            );
+            cacheSetter(`all-boats`);
+
             res.status(200).json({ data: result });
           })
           .catch((error) => res.status(400).send(error));
@@ -198,17 +173,7 @@ module.exports = {
             ],
           })
           .then(function (result) {
-            client.set(
-              `${req.params.country}-all-boats`,
-              JSON.stringify(result),
-              'EX',
-              30 * 60,
-              (err) => {
-                if (err) {
-                  console.log('set error', err);
-                }
-              }
-            );
+            cacheSetter(`${req.params.country}-all-boats`, result);
 
             return res.status(200).json({ data: result });
           })

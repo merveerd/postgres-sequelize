@@ -1,8 +1,9 @@
-const boats = require('../models').boat;
-const crudControllers = require('../utils/crud');
-
 var redis = require('redis');
 var client = redis.createClient(6379, 'localhost');
+
+const boats = require('../models').boat;
+const crudControllers = require('../utils/crud');
+const { cacheRemover } = require('../utils/helper');
 
 client.on('error', function (err) {
   console.log('Something went wrong ', err);
@@ -24,13 +25,7 @@ module.exports = {
         },
       })
       .then((result) => {
-        client.del(`boat-all`, function (err, response) {
-          if (response == 1) {
-            console.log('Deleted Successfully!');
-          } else {
-            console.log('Cannot delete', response, err);
-          }
-        });
+        cacheRemover(`boat-all`);
 
         return res
           .status(201)

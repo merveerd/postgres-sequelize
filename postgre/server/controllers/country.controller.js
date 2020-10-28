@@ -1,8 +1,9 @@
-const crudControllers = require('../utils/crud');
-const countries = require('../models').country;
-
 var redis = require('redis');
 var client = redis.createClient(6379, 'localhost');
+
+const crudControllers = require('../utils/crud');
+const countries = require('../models').country;
+const { cacheRemover } = require('../utils/helper');
 
 client.on('error', function (err) {
   console.log('Something went wrong ', err);
@@ -21,13 +22,7 @@ module.exports = {
         },
       })
       .then((result) => {
-        client.del(`country-all`, function (err, response) {
-          if (response == 1) {
-            console.log('Deleted Successfully!');
-          } else {
-            console.log('Cannot delete', response, err);
-          }
-        });
+        cacheRemover(`country-all`);
 
         return res
           .status(201)

@@ -1,6 +1,7 @@
 var redis = require('redis');
 var client = redis.createClient(6379, 'localhost');
 
+const { cacheRemover, cacheSetter } = require('./helper');
 client.on('error', function (err) {
   console.log('Something went wrong ', err);
 });
@@ -18,17 +19,8 @@ const getOne = (model) => async (req, res) => {
           },
         })
         .then((result) => {
-          client.set(
-            `${model.name}-${req.params.id}`,
-            JSON.stringify(result),
-            'EX',
-            30 * 60,
-            (err) => {
-              if (err) {
-                console.log('set error', err);
-              }
-            }
-          );
+          cacheSetter(`${model.name}-${req.params.id}`, result);
+
           res.status(200).json({ data: result });
         })
         .catch((err) => {
@@ -46,17 +38,7 @@ const list = (model) => async (req, res) => {
         return res.status(200).json({ data: JSON.parse(object) });
       } else {
         const doc = await model.findAll();
-        client.set(
-          `${model.name}-all`,
-          JSON.stringify(doc),
-          'EX',
-          30 * 60,
-          (err) => {
-            if (err) {
-              console.log('set error', err);
-            }
-          }
-        );
+        cacheSetter(`${model.name}-all`, doc);
 
         res.status(200).json({ data: doc });
       }
@@ -88,24 +70,9 @@ const update = (model) => async (req, res) => {
       return updatingItem
         .update(updateObject)
         .then((updatingItem) => {
-          client.del(`${model.name}-all`, function (err, response) {
-            if (response == 1) {
-              console.log('Deleted Successfully!');
-            } else {
-              console.log('Cannot delete', response, err);
-            }
-          });
+          cacheRemover(`${model.name}-all`);
+          cacheRemover(`${model.name}-${req.params.id}`);
 
-          client.del(`${model.name}-${req.params.id}`, function (
-            err,
-            response
-          ) {
-            if (response == 1) {
-              console.log('Deleted Successfully!');
-            } else {
-              console.log('Cannot delete', response, err);
-            }
-          });
           return res.status(201).json({ data: updatingItem });
         })
         .catch((error) => res.status(400).send(error));

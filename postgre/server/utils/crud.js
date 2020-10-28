@@ -1,36 +1,71 @@
-const db = require('../models');
-var cacher = require('sequelize-redis-cache');
 var redis = require('redis');
-var rc = redis.createClient(6379, 'localhost');
+var client = redis.createClient(6379, 'localhost');
+
+client.on('error', function (err) {
+  console.log('Something went wrong ', err);
+});
 
 const getOne = (model) => async (req, res) => {
-  var cacheObj = cacher(db.sequelize, rc).model(model.name).ttl(1800);
-  //the library doesnt support findByPk
-  return cacheObj
-    .findOne({
-      where: {
-        id: req.params.id,
-      },
-    })
-    .then((result) => {
-      res.status(200).json({ data: result });
-      console.log(cacheObj.cacheHit); // true or false
-    })
-    .catch((err) => {
-      res.status(404).json({ message: err });
-    });
+  client.get(`${model.name}-${req.params.id}`, function (err, object) {
+    if (object) {
+      console.log('cache data getOne');
+      return res.status(200).json({ data: JSON.parse(object) });
+    } else {
+      return model
+        .findOne({
+          where: {
+            id: req.params.id,
+          },
+        })
+        .then((result) => {
+          client.set(
+            `${model.name}-${req.params.id}`,
+            JSON.stringify(result),
+            'EX',
+            30 * 60,
+            (err) => {
+              if (err) {
+                console.log('set error', err);
+              }
+            }
+          );
+          res.status(200).json({ data: result });
+        })
+        .catch((err) => {
+          res.status(404).json({ message: err });
+        });
+    }
+  });
 };
 
 const list = (model) => async (req, res) => {
-  var cacheObj = cacher(db.sequelize, rc).model(model.name).ttl(1800);
   try {
-    const doc = await cacheObj.findAll();
-    console.log(cacheObj.cacheHit);
-    res.status(200).json({ data: doc });
+    client.get(`${model.name}-all`, async function (err, object) {
+      if (object) {
+        console.log('cache data list');
+        return res.status(200).json({ data: JSON.parse(object) });
+      } else {
+        const doc = await model.findAll();
+        client.set(
+          `${model.name}-all`,
+          JSON.stringify(doc),
+          'EX',
+          30 * 60,
+          (err) => {
+            if (err) {
+              console.log('set error', err);
+            }
+          }
+        );
+
+        res.status(200).json({ data: doc });
+      }
+    });
   } catch (err) {
     (err) => res.status(400).send(err);
   }
 };
+
 const update = (model) => async (req, res) => {
   let keys = Object.keys(req.body),
     updateObject = {};
@@ -52,7 +87,27 @@ const update = (model) => async (req, res) => {
 
       return updatingItem
         .update(updateObject)
-        .then((updatingItem) => res.status(201).json({ data: updatingItem }))
+        .then((updatingItem) => {
+          client.del(`${model.name}-all`, function (err, response) {
+            if (response == 1) {
+              console.log('Deleted Successfully!');
+            } else {
+              console.log('Cannot delete', response, err);
+            }
+          });
+
+          client.del(`${model.name}-${req.params.id}`, function (
+            err,
+            response
+          ) {
+            if (response == 1) {
+              console.log('Deleted Successfully!');
+            } else {
+              console.log('Cannot delete', response, err);
+            }
+          });
+          return res.status(201).json({ data: updatingItem });
+        })
         .catch((error) => res.status(400).send(error));
     })
     .catch((error) => res.status(400).send(error));

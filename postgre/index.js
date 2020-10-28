@@ -1,68 +1,13 @@
 const express = require('express');
 const logger = require('morgan');
 const bodyParser = require('body-parser');
-const axios = require('axios');
-const redis = require('redis');
-const { Sequelize, Op, Model, DataTypes } = require('sequelize');
 const app = express();
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(logger('dev'));
 
 const port = 4000;
-var sequelize = new Sequelize(
-  'postgres://sail_user:sail@localhost:5432/saildb'
-);
-async function test() {
-  try {
-    await sequelize.authenticate();
-    console.log('Connection has been established successfully.');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-  }
-}
-// test();
-// make a connection to the local instance of redis
-const client = redis.createClient(6379);
-
-client.on('error', (error) => {
-  console.error(error);
-});
-
-// app.get('/recipe/:fooditem', (req, res) => {
-//   try {
-//     const foodItem = req.params.fooditem;
-
-//     // Check the redis store for the data first
-//     client.get(foodItem, async (err, recipe) => {
-//       if (recipe) {
-//         return res.status(200).send({
-//           error: false,
-//           message: `Recipe for ${foodItem} from the cache`,
-//           data: JSON.parse(recipe),
-//         });
-//       } else {
-//         // When the data is not found in the cache then we can make request to the server
-
-//         const recipe = await axios.get(
-//           `http://www.recipepuppy.com/api/?q=${foodItem}`
-//         );
-
-//         // save the record in the cache for subsequent request
-//         client.setex(foodItem, 1800, JSON.stringify(recipe.data.results));
-
-//         // return the result to the client
-//         return res.status(200).send({
-//           error: false,
-//           message: `Recipe for ${foodItem} from the server`,
-//           data: recipe.data.results,
-//         });
-//       }
-//     });
-//   } catch (error) {
-//     console.log(error);
-//   }
-// });
 
 const countryRoute = require('./server/routes/country.router');
 app.use('/country', countryRoute);
@@ -74,8 +19,8 @@ const country_boatRoute = require('./server/routes/country_boat.router');
 app.use('/', country_boatRoute);
 
 app.get('*', (req, res) =>
-  res.status(200).send({
-    message: 'Welcome to the beginning of nothingness.',
+  res.status(200).json({
+    message: 'There is no root provided.',
   })
 );
 

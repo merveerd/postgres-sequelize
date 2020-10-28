@@ -7,7 +7,7 @@ const getOne = (model) => async (req, res) => {
         message: 'model is not found',
       });
     }
-    res.status(200).json(doc); //can be turned into {data: doc}
+    res.status(200).json({ data: doc });
   } catch (err) {
     res.status(404).json({ message: err });
   }

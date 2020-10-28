@@ -11,7 +11,7 @@ module.exports = {
         type: req.body.type.toLowerCase(),
         countryid: req.body.countryid,
       })
-      .then((boat) => res.status(201).send(boat))
+      .then((boat) => res.status(201).json({ data: boat }))
       .catch((error) => res.status(400).send(error));
   },
 };

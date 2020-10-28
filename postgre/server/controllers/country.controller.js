@@ -9,14 +9,14 @@ module.exports = {
       .create({
         name: req.body.name.toLowerCase(),
       })
-      .then((country) => res.status(201).send(country))
+      .then((country) => res.status(201).json({ data: country }))
       .catch((error) => res.status(400).send(error));
   },
 
   list(req, res) {
     return countries
       .findAll()
-      .then((country) => res.status(200).send(country))
+      .then((country) => res.status(200).json({ data: country }))
       .catch((error) => res.status(400).send(error));
   },
 
@@ -30,7 +30,7 @@ module.exports = {
             message: 'Country Not Found',
           });
         }
-        return res.status(200).send(country);
+        return res.status(200).json({ data: country });
       })
       .catch((error) => res.status(400).send(error));
   },
@@ -50,7 +50,7 @@ module.exports = {
           .update({
             name: req.body.name.toLowerCase(),
           })
-          .then(() => res.status(200).send(country))
+          .then(() => res.status(201).json({ data: country }))
           .catch((error) => res.status(400).send(error));
       })
       .catch((error) => res.status(400).send(error));
